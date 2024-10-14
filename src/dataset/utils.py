@@ -33,8 +33,6 @@ def create_patches(dataset_dir, patch_size=512, overlap=0, patches_dir=None):
 
     imgs_paths = glob(os.path.join(dataset_dir, "**/*"), recursive=True)
     imgs_paths = [f for f in imgs_paths if f.endswith((".jpg", ".png"))]
-    print(imgs_paths)
-
     for img_path in imgs_paths:
 
         patch_name = img_path.replace("data/", patches_dir + "/")
@@ -43,15 +41,12 @@ def create_patches(dataset_dir, patch_size=512, overlap=0, patches_dir=None):
             print(f"Could not read image: {img_path}")
             continue
         patches = img_to_patches(img, patch_size, overlap)
-
+        valid_ext = [".jpg", ".png", "tif", "geotif"]
+        file_name, file_ext = os.path.splitext(patch_name)
+        assert file_ext in valid_ext, f"Invalid file extension {file_ext}"
         for i, img in enumerate(patches):
-            if patch_name.endswith(".jpg"):
-                img_save_name = patch_name.replace(".jpg", f"_{i+1}.jpg")
-            elif patch_name.endswith(".png"):
-                img_save_name = patch_name.replace(".png", f"_{i+1}.png")
-            else:
-                raise ValueError("Invalid image extension")
-
+            img_save_name = file_name + f"_{i+1}" + file_ext
+            print(f"Saving patch {img_save_name}")
             if not os.path.exists(os.path.dirname(img_save_name)):
                 os.makedirs(os.path.dirname(img_save_name))
 
