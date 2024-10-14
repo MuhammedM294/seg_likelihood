@@ -11,10 +11,11 @@ class UNet(nn.Module):
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
 
+        self.init_conv = DoubleConv(in_channels, features[0])
         # Create encoder path
-        for feature in features:
-            self.encoder_blocks.append(EncoderBlock(in_channels, feature))
-            in_channels = feature
+
+        for i in range(1, len(features)):
+            self.encoder_blocks.append(EncoderBlock(features[i - 1], features[i]))
 
         # Center part (bottleneck)
         self.center = DoubleConv(features[-1], features[-1] * 2)
@@ -28,11 +29,12 @@ class UNet(nn.Module):
 
     def forward(self, x):
         skip_connections = []
-
+        x = self.init_conv(x)
+        skip_connections.append(x)
         # Encoder path
         for encoder_block in self.encoder_blocks:
-            x, skip = encoder_block(x)
-            skip_connections.append(skip)
+            x = encoder_block(x)
+            skip_connections.append(x)
 
         # Bottleneck
         x = self.center(x)
