@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, dropout=False):
         super().__init__()
         self.double_conv = nn.Sequential(
             nn.Conv2d(
@@ -28,6 +28,9 @@ class DoubleConv(nn.Module):
             nn.ReLU(inplace=True),
         )
 
+        if dropout:
+            self.double_conv.append(nn.Dropout2d(p=0.1))
+
     def forward(self, x):
         return self.double_conv(x)
 
@@ -35,13 +38,14 @@ class DoubleConv(nn.Module):
 class EncoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.double_conv = DoubleConv(in_channels, out_channels)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.max_conv = nn.Sequential(
+            nn.MaxPool2d(kernel_size=2, stride=2), DoubleConv(in_channels, out_channels)
+        )
 
     def forward(self, x):
-        x = self.double_conv(x)
-        p = self.pool(x)
-        return p, x  # p is the output of the block, x is the skip connection
+
+        return self.max_conv(x)
 
 
 class DecoderBlock(nn.Module):
