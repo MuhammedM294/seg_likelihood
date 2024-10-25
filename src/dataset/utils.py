@@ -1,9 +1,15 @@
 import os
 import cv2 as cv
 from glob import glob
+from tqdm import tqdm
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 def img_to_patches(img, patch_size, overlap):
+    """
+    Splits an image into patches of size patch_size x patch_size with overlap.
+    """
     h, w, _ = img.shape
     step = patch_size - overlap
 
@@ -19,6 +25,9 @@ def img_to_patches(img, patch_size, overlap):
 
 
 def create_patches(dataset_dir, patch_size=512, overlap=0, patches_dir=None):
+    """
+    Splits all images in the dataset into patches of size patch_size x patch_size with overlap.
+    """
 
     assert os.path.exists(dataset_dir), f"Path {dataset_dir} does not exist"
     assert (
@@ -33,9 +42,10 @@ def create_patches(dataset_dir, patch_size=512, overlap=0, patches_dir=None):
 
     imgs_paths = glob(os.path.join(dataset_dir, "**/*"), recursive=True)
     imgs_paths = [f for f in imgs_paths if f.endswith((".jpg", ".png"))]
-    print(imgs_paths)
 
-    for img_path in imgs_paths:
+    print(f"Found {len(imgs_paths)} images")
+
+    for img_path in tqdm(imgs_paths, desc="Creating patches"):
 
         patch_name = img_path.replace("data/", patches_dir + "/")
         img = cv.imread(img_path, cv.IMREAD_COLOR)
@@ -58,7 +68,43 @@ def create_patches(dataset_dir, patch_size=512, overlap=0, patches_dir=None):
             cv.imwrite(img_save_name, img)
 
 
+def get_transform(is_train=True, mean=None, std=None):
+    """
+    Returns the appropriate transformation based on whether the user wants training or testing transformations.
+    """
+    if is_train:
+        # Training Transformations
+        return A.Compose(
+            [
+                A.SmallestMaxSize(max_size=160),
+                A.ShiftScaleRotate(
+                    shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.5
+                ),
+                A.RandomCrop(height=128, width=128),
+                A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
+                A.RandomBrightnessContrast(p=0.5),
+                A.Normalize(
+                    mean=mean,
+                    std=std,
+                ),
+                ToTensorV2(),
+            ]
+        )
+    else:
+        # Testing Transformations
+        return A.Compose(
+            [
+                A.Resize(512, 512),
+                A.Normalize(
+                    mean=mean,
+                    std=std,
+                ),
+                ToTensorV2(),
+            ]
+        )
+
+
 if __name__ == "__main__":
     DATASET_PATH = "data/"
 
-    create_patches(DATASET_PATH, patch_size=512, overlap=0, patches_dir=None)
+    create_patches(DATASET_PATH, patch_size=512, overlap=0, patches_dir="data/patches")

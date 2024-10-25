@@ -2,3 +2,6 @@ data/train
 data/test
 data/val
 data/patches
+
+**__pycache__/
+src/models/unet/__pycache__/
