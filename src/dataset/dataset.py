@@ -2,12 +2,11 @@ import os
 import cv2 as cv
 import numpy as np
 import torch
-from glob import glob
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, Dataset
-from PIL import Image
-from torchvision import transforms
+from glob import glob
+from utils import get_transform
 
 
 class SegDataset(Dataset):
@@ -18,7 +17,6 @@ class SegDataset(Dataset):
         self.mask_paths = glob(path + f"/label/*.{mask_ext}")
         self.img_paths.sort()
         self.mask_paths.sort()
-        # self.ids = [os.path.basename(p).split(".")[0] for p in self.img_paths]
         self.resize = resize
         self.transform = transform
 
@@ -26,7 +24,6 @@ class SegDataset(Dataset):
         return len(self.img_paths)
 
     def __getitem__(self, idx):
-        # id = self.ids[idx]
         img = cv.imread(self.img_paths[idx], cv.IMREAD_COLOR)
         mask = cv.imread(self.mask_paths[idx], cv.IMREAD_GRAYSCALE)
 
@@ -35,10 +32,13 @@ class SegDataset(Dataset):
             mask = cv.resize(mask, self.resize)
 
         mask = np.expand_dims(mask, axis=2)
-
         if self.transform is not None:
-            img = self.transform(img)
-            mask = self.transform(mask)
+            data = self.transform(image=img, mask=mask)
+            img = data["image"]
+            mask = data["mask"]
+
+        mask = mask.permute(2, 0, 1)
+
         return img, mask
 
     @property
@@ -53,7 +53,6 @@ class SegDataset(Dataset):
             if self.resize is not None:
                 img = cv.resize(img, self.resize)
 
-            # Convert image to float32 for precise calculations
             img = img.astype(np.float32) / 255.0
 
             mean += img.mean(axis=(0, 1))
@@ -66,26 +65,34 @@ class SegDataset(Dataset):
 
 
 if __name__ == "__main__":
+    DATA_MEANS = (0.30451819, 0.33103726, 0.30483206)
+    DATA_STD = (0.09850518, 0.10860541, 0.12041442)
+    train_dataset = SegDataset(
+        "data/patches/train",
+        transform=get_transform(is_train=True, mean=DATA_MEANS, std=DATA_STD),
+    )
+    test_dataset = SegDataset(
+        "data/patches/test",
+        transform=get_transform(is_train=False, mean=DATA_MEANS, std=DATA_STD),
+    )
+    val_dataset = SegDataset(
+        "data/patches/val",
+        transform=get_transform(is_train=False, mean=DATA_MEANS, std=DATA_STD),
+    )
 
-    train_path = "data/patches/val"
-    test_path = "data/patches/test"
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=64, shuffle=True, num_workers=4, drop_last=False
+    )
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=64, shuffle=False, num_workers=4, drop_last=False
+    )
+    val_dataloader = DataLoader(
+        val_dataset, batch_size=64, shuffle=False, num_workers=4, drop_last=False
+    )
 
-    train_dataset = SegDataset(train_path, resize=None, transform=None)
-    test_dataset = SegDataset(test_path, resize=None, transform=None)
-    num = np.random.randint(0, len(train_dataset))
-    img, mask = train_dataset[num]
-    img2, mask2 = test_dataset[num]
-    plt.figure(figsize=(10, 10))
-    plt.subplot(2, 2, 1)
-    plt.imshow(img)
-    plt.title(f"Train Image")
-    plt.subplot(2, 2, 2)
-    plt.imshow(mask, cmap="gray")
-    plt.title(f"Train Mask")
-    plt.subplot(2, 2, 3)
-    plt.imshow(img2)
-    plt.title(f"Test Image")
-    plt.subplot(2, 2, 4)
-    plt.imshow(mask2, cmap="gray")
-    plt.title(f"Test Mask")
-    plt.show()
+    print(f"Train dataloader: {len(train_dataloader)} batches")
+    print(f"Test dataloader: {len(test_dataloader)} batches")
+    print(f"Validation dataloader: {len(val_dataloader)} batches")
+
+    img, mask = next(iter(test_dataloader))
+    print(f"Image shape: {img.shape}, mask shape: {mask.shape}")
