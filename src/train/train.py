@@ -55,7 +55,7 @@ test_dataset = SegDataset(
     resize=None,
 )
 
-train_dataset = get_dataset_subset(train_dataset, 3200)
+# train_dataset = get_dataset_subset(train_dataset, 6400)
 train_dataloader = DataLoader(
     train_dataset,
     batch_size=32,
@@ -65,10 +65,10 @@ train_dataloader = DataLoader(
     drop_last=False,
 )
 
-val_dataset = get_dataset_subset(val_dataset, 1600)
+# val_dataset = get_dataset_subset(val_dataset, 1600)
 val_dataloader = DataLoader(
     val_dataset,
-    batch_size=32,
+    batch_size=16,
     shuffle=True,
     num_workers=4,
     pin_memory=True,
@@ -91,24 +91,6 @@ def criterion(logits, mask, mode="binary"):
 
 def train(model, train_loader, optimizer, criterion, epochs, grad_scaler, device):
 
-    # experiment = wandb.init(
-    #     project="Uncertainty Estimation Ex 1",
-    #     job_type="train",
-    #     resume="allow",
-    #     anonymous="must",
-    # )
-
-    # experiment.config.update(
-    #     {
-    #         "epochs": epochs,
-    #         "batch_size": 32,
-    #         "learning_rate": 1e-3,
-    #         "weight_decay": 1e-3,
-    #         "optimizer": optimizer,
-    #         "amp": grad_scaler,
-    #         "allow_val_change": True,
-    #     }
-    # )
     for epoch in range(epochs):
         model.train()
         epoch_train_loss = 0.0
@@ -155,28 +137,6 @@ def train(model, train_loader, optimizer, criterion, epochs, grad_scaler, device
 
             epoch_train_loss /= len(train_loader)
             print(f"Train Epoch {epoch + 1}/{epochs} Loss: {epoch_train_loss:.4f}")
-
-        with tqdm(
-            total=len(val_dataloader),
-            desc=f"Val Epoch {epoch + 1}/{epochs}",
-            unit="batch",
-        ) as pbar:
-            for img, mask in val_dataloader:
-                model.eval()
-                with torch.no_grad():
-                    img = img.to(device, dtype=torch.float32)
-                    mask = mask.to(device, dtype=torch.float32)
-                    logits = model(img)
-                    mask = mask.permute(0, 3, 1, 2)
-                    val_loss = criterion(logits, mask)
-                    epoch_val_loss += val_loss.item()
-                    pbar.set_postfix({"val_loss (batch)": val_loss.item()})
-                    pbar.update()
-
-            epoch_val_loss /= len(val_dataloader)
-            print(
-                f"Val Epoch {epoch + 1}/{epochs} Validation Loss: {epoch_val_loss:.4f}"
-            )
 
 
 if __name__ == "__main__":
