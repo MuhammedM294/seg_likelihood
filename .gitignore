@@ -5,3 +5,5 @@ data/patches
 
 **__pycache__/
 src/models/unet/__pycache__/
+
+wandb/
