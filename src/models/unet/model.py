@@ -1,12 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from blocks import DoubleConv, EncoderBlock, DecoderBlock
+from .blocks import DoubleConv, EncoderBlock, DecoderBlock
 
 
 class UNet(nn.Module):
     def __init__(self, in_channels, out_channels, features=[64, 128, 256, 512]):
         super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.features = features
 
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
