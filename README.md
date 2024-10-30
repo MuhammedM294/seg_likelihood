@@ -1,2 +1,2 @@
-# Water Bodies Semantic Segmentation with Uncertainty Quantification 
-This project aims to perform waterbodies semantic segmentation with uncertainty quantification using CNN architectures.
+# Semantic Segmentation with Uncertainty Estimation 
+This project aims to perform semantic segmentation tasks with uncertainty quantification using CNN architectures.
